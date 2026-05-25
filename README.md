@@ -1,3 +1,119 @@
+# Smart Patient Summary Agent for FHIR (Contest Submission)
+
+This repository contains a contest submission for InterSystems Programming Contest: AI Agents for FHIR.
+
+## Contest Submission Details
+
+- Contest: InterSystems Programming Contest: AI Agents for FHIR
+- Category fit: AI agent used in an interoperability FHIR solution
+- Open source repository: this repository
+- Primary implementation language: ObjectScript (with supporting Python test-data tooling)
+
+## Idea Link
+
+- Idea page: TODO add your idea or Open Exchange idea link here
+
+## Team
+
+- Team lead: Gil Tavassy (InterSystems Developer Community profile: https://community.intersystems.com/user/gil-tavassy)
+- LinkedIn: https://www.linkedin.com/in/gil-tavassy-5703b311b
+
+Submission mode: solo project.
+
+## What This App Does
+
+Smart Patient Summary Agent generates role-specific clinical summaries over FHIR data for:
+
+- ED Doctor
+- Care Manager
+- Patient
+- Family Caregiver
+
+The output is deterministic, evidence-based, and formatted as actionable narrative sections:
+
+- Patient Overview
+- Clinical Details (conditions, medications, allergies, encounters, observations, care plans)
+- Current Issues
+- Recent Changes
+- Risks / Follow-up
+- Role-specific action plan
+
+## Originality and Significant Improvement
+
+This submission provides a concrete, working FHIR-focused agent workflow rather than a generic chat wrapper.
+Key differentiators:
+
+- Role-specific narrative adaptation from the same FHIR evidence set
+- Deterministic summary generation for reproducible judging
+- Clinical-detail extraction that surfaces medication names, allergy details, encounter reasons, and inactive-condition timelines
+- Full-evidence mode without hidden truncation, to keep review transparent
+- Rich synthetic profile generator for realistic scenario testing (demo-rich-002 to demo-rich-005)
+
+## Installation and Run (Quick Path)
+
+Detailed steps are in [RUNBOOK.md](RUNBOOK.md). Quick path (PowerShell, Windows):
+
+```powershell
+$docker = "C:\Program Files\Docker\Docker\resources\bin\docker.exe"
+& $docker start iris_fhir iris-ai-hub-162
+& $docker exec iris-ai-hub-162 sh -lc "mkdir -p /tmp/aihub/Sample/AI/Tools /tmp/aihub/Sample/AI/ToolSet /tmp/aihub/Sample/AI/Examples"
+& $docker cp C:\Projects\FHIR\ai-hub-eap\objectscript\cls\Sample\AI\Tools\FHIRReadOnly.cls iris-ai-hub-162:/tmp/aihub/Sample/AI/Tools/FHIRReadOnly.cls
+& $docker cp C:\Projects\FHIR\ai-hub-eap\objectscript\cls\Sample\AI\ToolSet\FHIRReadOnly.cls iris-ai-hub-162:/tmp/aihub/Sample/AI/ToolSet/FHIRReadOnly.cls
+& $docker cp C:\Projects\FHIR\ai-hub-eap\objectscript\cls\Sample\AI\Examples\FHIRSummary.cls iris-ai-hub-162:/tmp/aihub/Sample/AI/Examples/FHIRSummary.cls
+
+$script = @'
+zn "USER"
+do $system.OBJ.ImportDir("/tmp/aihub/Sample/AI/Tools","*.cls","ck")
+do $system.OBJ.ImportDir("/tmp/aihub/Sample/AI/ToolSet","*.cls","ck")
+do $system.OBJ.ImportDir("/tmp/aihub/Sample/AI/Examples","*.cls","ck")
+set ^||ENV("FHIR_BASE_URL")="http://host.docker.internal:52773/fhir/r4"
+set ^||ENV("FHIR_BASIC_USER")="_SYSTEM"
+set ^||ENV("FHIR_BASIC_PASS")="SYS"
+do ##class(Sample.AI.Examples.FHIRSummary).DemoNarrativeAllRoles("demo-rich-003","detailed")
+halt
+'@
+
+Set-Content -Path C:\Projects\FHIR\ai-hub-eap\tmp_contest_demo.mac -Value $script -NoNewline
+& $docker cp C:\Projects\FHIR\ai-hub-eap\tmp_contest_demo.mac iris-ai-hub-162:/tmp/aihub/tmp_contest_demo.mac
+& $docker exec iris-ai-hub-162 sh -lc "iris session IRIS < /tmp/aihub/tmp_contest_demo.mac"
+```
+
+Expected result:
+
+- Narrative output printed for all roles with populated clinical details
+
+## Demo Profiles
+
+Additional realistic test profiles can be generated with:
+
+```powershell
+c:/Projects/FHIR/.venv/Scripts/python.exe C:/Projects/FHIR/FHIR_TestServer/create_rich_demo_profiles.py
+```
+
+Available profile IDs:
+
+- demo-rich-002
+- demo-rich-003
+- demo-rich-004
+- demo-rich-005
+
+## Detailed Behavior Description (No Video Required)
+
+This submission uses a detailed written behavior description instead of a demo video.
+The README and [RUNBOOK.md](RUNBOOK.md) provide reproducible commands and expected outputs for evaluator verification.
+
+## Contest Compliance Checklist
+
+- Fully functional application or library: yes
+- Original work / significant improvement: yes (see section above)
+- Open source code: yes
+- English README with installation steps: yes
+- Link to idea included: TODO fill before submission
+- Video demo or detailed app description: detailed behavior description provided in this README and in [RUNBOOK.md](RUNBOOK.md)
+- Team members listed (if team submission): not applicable (solo submission)
+
+---
+
 # InterSystems AI Hub EAP
 
 Welcome to the Early Access Program for the InterSystems AI Hub! 
