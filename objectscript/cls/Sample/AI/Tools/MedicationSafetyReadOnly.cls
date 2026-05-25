@@ -513,10 +513,7 @@ ClassMethod SafeGet(obj As %DynamicObject, key As %String) As %String [ Internal
 
 ClassMethod GetFHIR(path As %String) As %DynamicObject [ Internal ]
 {
-    Set base = ##class(Sample.AI.Utils).GetAPIKey("fhir")
-    If base = "" {
-        Set base = $Get(^||ENV("FHIR_BASE_URL"))
-    }
+    Set base = $Get(^||ENV("FHIR_BASE_URL"))
     If base = "" {
         Return {"error":"FHIR_BASE_URL is not configured"}
     }
@@ -558,7 +555,7 @@ ClassMethod GetFHIR(path As %String) As %DynamicObject [ Internal ]
         If (code<200) || (code>299) {
             Return {"error":"FHIR request failed", "statusCode": (code), "body": (raw)}
         }
-        Quit ##class(%DynamicAbstractObject).%FromJSON(raw)
+        Return ##class(%DynamicAbstractObject).%FromJSON(raw)
     } Catch ex {
         Return {"error":"Exception during FHIR call", "details": (ex.DisplayString())}
     }

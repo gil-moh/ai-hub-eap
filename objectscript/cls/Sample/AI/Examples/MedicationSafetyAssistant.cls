@@ -99,27 +99,27 @@ ClassMethod WriteBulletItem(item As %DynamicObject) [ Internal ]
 ClassMethod CountFromCounts(counts As %DynamicObject, key As %String) As %String [ Internal ]
 {
     If '$ISOBJECT(counts) {
-        Quit "0"
+        Return "0"
     }
     Try {
         Set value = counts.%Get(key)
     } Catch ex {
-        Quit "0"
+        Return "0"
     }
-    Quit value
+    Return value
 }
 
 ClassMethod SafeGet(obj As %DynamicObject, key As %String) As %String [ Internal ]
 {
     If '$ISOBJECT(obj) {
-        Quit ""
+        Return ""
     }
     Try {
         Set value = obj.%Get(key)
     } Catch ex {
-        Quit ""
+        Return ""
     }
-    Quit value
+    Return value
 }
 
 }
