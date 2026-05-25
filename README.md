@@ -1,3 +1,41 @@
+# Medication Safety and Interaction Assistant (Work In Progress)
+
+This branch is dedicated to a new application: Medication Safety and Interaction Assistant.
+
+## Goal
+
+Build an AI-enabled FHIR assistant that helps identify medication safety risks and clinically relevant interactions from patient context, and produces role-specific guidance for:
+
+- ED doctor
+- Care manager
+- Patient
+- Family caregiver
+
+## Planned MVP Scope
+
+- Read FHIR medication and allergy context (MedicationRequest, Medication, AllergyIntolerance)
+- Consider supporting clinical context (Condition, Observation, Encounter)
+- Detect potential medication safety issues and interaction signals
+- Generate deterministic role-specific summaries and follow-up actions
+- Keep evidence visible and explain why each safety signal was raised
+
+## Initial Deliverables
+
+- New ObjectScript classes under `objectscript/cls/Sample/AI/`
+- Reproducible runbook commands for local validation
+- Rich synthetic test profiles focused on medication safety scenarios
+- Contest-ready README sections (team, links, install, behavior description)
+
+## Development Checklist
+
+- [ ] Define first risk rules and interaction heuristics
+- [ ] Implement read-only data retrieval tool methods
+- [ ] Implement narrative summary generator for all roles
+- [ ] Add synthetic patient profiles for medication-risk edge cases
+- [ ] Add smoke-test commands and expected output examples
+
+---
+
 # InterSystems AI Hub EAP
 
 Welcome to the Early Access Program for the InterSystems AI Hub! 
