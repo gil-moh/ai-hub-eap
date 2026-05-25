@@ -13,11 +13,22 @@ Build an AI-enabled FHIR assistant that helps identify medication safety risks a
 
 ## Planned MVP Scope
 
-- Read FHIR medication and allergy context (MedicationRequest, Medication, AllergyIntolerance)
-- Consider supporting clinical context (Condition, Observation, Encounter)
-- Detect potential medication safety issues and interaction signals
-- Generate deterministic role-specific summaries and follow-up actions
+- Show the active medication list
+- Detect duplicate therapy
+- Cross-check medications against allergies
+- Produce a plain-language counseling summary
+- Consider supporting clinical context (MedicationRequest, MedicationStatement, AllergyIntolerance, Condition, Observation)
 - Keep evidence visible and explain why each safety signal was raised
+
+## Platform Features
+
+- FHIR API for medication, allergy, condition, and observation retrieval
+- AI Hub for deterministic narrative generation and agent-style workflows
+- Vector Search for context-aware explanations from drug guidance content or patient education documents
+
+## Nice Twist
+
+Use Vector Search to surface relevant counseling snippets, drug guidance, or patient education text that can explain why a medication warning matters in plain language.
 
 ## Initial Deliverables
 
@@ -25,6 +36,7 @@ Build an AI-enabled FHIR assistant that helps identify medication safety risks a
 - Reproducible runbook commands for local validation
 - Rich synthetic test profiles focused on medication safety scenarios
 - Contest-ready README sections (team, links, install, behavior description)
+- A counseling summary that ties medication findings to patient-friendly guidance
 
 ## Development Checklist
 
