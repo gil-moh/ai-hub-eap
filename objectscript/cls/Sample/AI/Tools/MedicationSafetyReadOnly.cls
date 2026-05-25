@@ -513,52 +513,88 @@ ClassMethod SafeGet(obj As %DynamicObject, key As %String) As %String [ Internal
 
 ClassMethod GetFHIR(path As %String) As %DynamicObject [ Internal ]
 {
-    Set base = $Get(^||ENV("FHIR_BASE_URL"))
-    If base = "" {
-        Return {"error":"FHIR_BASE_URL is not configured"}
-    }
-
-    Set full = base
-    If $Extract(full, $Length(full)) '= "/" {
-        Set full = full _ "/"
-    }
-    Set full = full _ path
+    Set baseUrl = ..GetBaseUrl()
+    Set fullUrl = baseUrl _ "/" _ path
 
     Set req = ##class(%Net.HttpRequest).%New()
-    Set req.Https = ($Extract(full,1,5)="https")
-    Set req.Server = ..ExtractHost(full)
-    Set req.Port = ..ExtractPort(full)
-    Set req.Location = ..ExtractLocation(full)
-    Set req.ContentType = "application/fhir+json"
+    Set req.SSLCheckServerIdentity = 0
+
+    Set basicUser = $SYSTEM.Util.GetEnviron("FHIR_BASIC_USER")
+    If basicUser = "" {
+        Set basicUser = $GET(^||ENV("FHIR_BASIC_USER"))
+    }
+    Set basicPass = $SYSTEM.Util.GetEnviron("FHIR_BASIC_PASS")
+    If basicPass = "" {
+        Set basicPass = $GET(^||ENV("FHIR_BASIC_PASS"))
+    }
+    If (basicUser '= "") && (basicPass '= "") {
+        Set req.Username = basicUser
+        Set req.Password = basicPass
+    } Else {
+        Set token = $SYSTEM.Util.GetEnviron("FHIR_BEARER_TOKEN")
+        If token = "" {
+            Set token = $GET(^||ENV("FHIR_BEARER_TOKEN"))
+        }
+        If token '= "" {
+            Do req.SetHeader("Authorization", "Bearer " _ token)
+        }
+    }
     Do req.SetHeader("Accept", "application/fhir+json")
 
-    Set bearer = $Get(^||ENV("FHIR_BEARER_TOKEN"))
-    If bearer '= "" {
-        Do req.SetHeader("Authorization", "Bearer " _ bearer)
-    } Else {
-        Set user = $Get(^||ENV("FHIR_BASIC_USER"))
-        Set pass = $Get(^||ENV("FHIR_BASIC_PASS"))
-        If user '= "" {
-            Set req.Username = user
-            Set req.Password = pass
-            Set req.InitiateAuthentication = "Basic"
+    Set sc = req.Get(fullUrl)
+    If $$$ISERR(sc) {
+        Return {
+            "error": "HTTP request failed",
+            "status": ($SYSTEM.Status.GetErrorText(sc)),
+            "url": (fullUrl)
+        }
+    }
+
+    Set code = +req.HttpResponse.StatusCode
+    Set raw = ..ReadResponseBody(req.HttpResponse.Data)
+    If (code<200) || (code>299) {
+        Return {
+            "error": "FHIR request failed",
+            "statusCode": (code),
+            "url": (fullUrl),
+            "body": (raw)
         }
     }
 
     Try {
-        Set sc = req.Get(req.Location)
-        If $$$ISERR(sc) {
-            Return {"error":"HTTP request failed", "status": ($SYSTEM.Status.GetErrorText(sc))}
-        }
-        Set code = +req.HttpResponse.StatusCode
-        Set raw = req.HttpResponse.Data.Read()
-        If (code<200) || (code>299) {
-            Return {"error":"FHIR request failed", "statusCode": (code), "body": (raw)}
-        }
         Return ##class(%DynamicAbstractObject).%FromJSON(raw)
     } Catch ex {
-        Return {"error":"Exception during FHIR call", "details": (ex.DisplayString())}
+        Return {
+            "resourceType": "Binary",
+            "contentType": (req.HttpResponse.GetHeader("Content-Type")),
+            "data": (raw)
+        }
     }
+}
+
+ClassMethod GetBaseUrl() As %String [ Internal ]
+{
+    Set base = $SYSTEM.Util.GetEnviron("FHIR_BASE_URL")
+    If base = "" {
+        Set base = $GET(^||ENV("FHIR_BASE_URL"))
+    }
+    If base = "" {
+        Set base = "http://localhost:52773/fhir/r4"
+    }
+    Return $ZSTRIP(base, "<W", "/")
+}
+
+ClassMethod ReadResponseBody(stream As %Stream.Object) As %String [ Internal ]
+{
+    If '$ISOBJECT(stream) {
+        Return ""
+    }
+
+    Set out = ""
+    While 'stream.AtEnd {
+        Set out = out _ stream.Read(32000)
+    }
+    Return out
 }
 
 ClassMethod UrlEncode(s As %String) As %String [ Internal ]
