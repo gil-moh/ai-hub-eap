@@ -182,6 +182,7 @@ ClassMethod AppendMedicationEntries(ByRef out As %DynamicArray, bundle As %Dynam
         Set one = {
             "name": (medName),
             "normalizedKey": (..NormalizeMedicationKey(medName)),
+            "resourceId": (..SafeGet(r, "id")),
             "status": (..SafeGet(r, "status")),
             "source": (sourceType),
             "authoredOn": (..SafeGet(r, "authoredOn")),
@@ -198,7 +199,7 @@ ClassMethod DetectDuplicateTherapy(medList As %DynamicArray) As %DynamicArray [ 
         Return findings
     }
 
-    Kill keyCount, keyNames
+    Kill keyCount, keyNames, keyIds
     For i=0:1:(medList.%Size()-1) {
         Set one = medList.%Get(i)
         If '$ISOBJECT(one) {
@@ -211,6 +212,7 @@ ClassMethod DetectDuplicateTherapy(medList As %DynamicArray) As %DynamicArray [ 
         }
         Set keyCount(key) = $Get(keyCount(key)) + 1
         Set keyNames(key, keyCount(key)) = name
+        Set keyIds(key, keyCount(key)) = ..SafeGet(one, "resourceId")
     }
 
     Set key = ""
@@ -221,6 +223,7 @@ ClassMethod DetectDuplicateTherapy(medList As %DynamicArray) As %DynamicArray [ 
             Continue
         }
         Set names = ""
+        Set ids = []
         For idx=1:1:keyCount(key) {
             Set n = $Get(keyNames(key, idx))
             If n = "" {
@@ -231,12 +234,23 @@ ClassMethod DetectDuplicateTherapy(medList As %DynamicArray) As %DynamicArray [ 
             } Else {
                 Set names = names _ "; " _ n
             }
+
+            Set rid = $Get(keyIds(key, idx))
+            If rid '= "" {
+                Do ids.%Push(rid)
+            }
         }
         Do findings.%Push({
             "risk": "possible-duplicate-therapy",
             "key": (key),
             "count": (keyCount(key)),
             "evidence": (names),
+            "resourceIds": (ids),
+            "source": {
+                "type": "heuristic",
+                "method": "normalized-medication-name-match",
+                "resources": "MedicationRequest/MedicationStatement"
+            },
             "message": "Potential duplicate therapy detected. Review overlapping active medications."
         })
     }
@@ -268,7 +282,10 @@ ClassMethod CrossCheckAllergies(medList As %DynamicArray, allergyBundle As %Dyna
         }
         Set term = ..ExtractAllergyName(r)
         If term '= "" {
-            Do allergyTerms.%Push(term)
+            Do allergyTerms.%Push({
+                "term": (term),
+                "allergyId": (..SafeGet(r, "id"))
+            })
         }
     }
 
@@ -287,12 +304,24 @@ ClassMethod CrossCheckAllergies(medList As %DynamicArray, allergyBundle As %Dyna
         }
 
         For j=0:1:(allergyTerms.%Size()-1) {
-            Set term = allergyTerms.%Get(j)
+            Set oneAllergy = allergyTerms.%Get(j)
+            If '$ISOBJECT(oneAllergy) {
+                Continue
+            }
+            Set term = ..SafeGet(oneAllergy, "term")
+            Set allergyId = ..SafeGet(oneAllergy, "allergyId")
             If ..ContainsInsensitive(medName, term) || ..ContainsInsensitive(term, medName) {
                 Do findings.%Push({
                     "risk": "possible-allergy-conflict",
                     "medication": (medName),
+                    "medicationResourceId": (..SafeGet(med, "resourceId")),
                     "allergy": (term),
+                    "allergyResourceId": (allergyId),
+                    "source": {
+                        "type": "heuristic",
+                        "method": "medication-name-overlaps-allergy-term",
+                        "resources": "MedicationRequest/MedicationStatement + AllergyIntolerance"
+                    },
                     "message": "Medication name appears to overlap a documented allergy. Confirm before prescribing or administering."
                 })
             }
