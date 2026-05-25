@@ -153,6 +153,36 @@ Set sc = ##class(Sample.AI.Agent.EverythingAgent).Demo()      // interactive
 Set sc = ##class(Sample.AI.Agent.EverythingAgent).DemoFixed() // automated
 ```
 
+### FHIR Interop Starter (`Sample.AI.Agent.FHIRInteropAgent`)
+
+Read-only FHIR assistant starter aimed at interoperability workflows and contest projects.
+
+**Classes:**
+- `Sample.AI.Tools.FHIRReadOnly` - Smart Patient Summary read methods for Patient, Observation, AllergyIntolerance, Condition, MedicationRequest, Encounter, and CarePlan
+- `Sample.AI.ToolSet.FHIRReadOnly` - Read-only toolset (`Match="^(Search|Get|Generate)"`) with console audit policy
+- `Sample.AI.Agent.FHIRInteropAgent` - Agent with provider auto-detection and a demo prompt
+- `Sample.AI.Examples.FHIRSummary` - Deterministic summary demos (single role and role comparison)
+
+**Environment variables:**
+- `FHIR_BASE_URL` (optional, default `http://localhost:52773/fhir/r4`)
+- `FHIR_BEARER_TOKEN` (optional)
+- `FHIR_BASIC_USER` / `FHIR_BASIC_PASS` (optional basic auth)
+- One LLM key: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `GROK_API_KEY`
+
+**Runtime requirement:**
+- `%AI.*` classes are required. Use an AI Hub-enabled IRIS runtime for compile/run.
+
+**Usage:**
+```objectscript
+Do ##class(Sample.AI.Agent.FHIRInteropAgent).Demo()
+
+// Deterministic summary (single role)
+Do ##class(Sample.AI.Examples.FHIRSummary).DemoDeterministic("a3d599da-a9de-8caa-950a-6bc057b1b261", "ed", "brief")
+
+// Compare all roles on one patient
+Do ##class(Sample.AI.Examples.FHIRSummary).DemoRoleComparison("a3d599da-a9de-8caa-950a-6bc057b1b261", "brief")
+```
+
 ## Sample Tools
 
 ### BMI Calculator (`Sample.AI.Tools.BMI`)
