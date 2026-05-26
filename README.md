@@ -76,8 +76,9 @@ python scripts/consolidate_med_safety_cases.py
 
 ## Demo
 
-- Add video link (required by contest guidance)
-- Optional: add a short architecture or walk-through image/GIF
+- Option A: add a video link with a short walk-through of setup, run, and outputs
+- Option B: provide a detailed written walk-through in this README (acceptable alternative)
+- Optional: add a short architecture image or GIF
 
 ---
 
