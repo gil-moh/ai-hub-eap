@@ -1121,4 +1121,44 @@ ClassMethod GetFirstArrayItem(arr As %DynamicArray) As %String [ Internal ]
     Return item
 }
 
+/// Runs one role summary and writes only clinician-facing narrative text to a file.
+/// This avoids terminal/session scaffolding like USER> prompts in shared artifacts.
+ClassMethod DemoNarrativeToFile(patientId As %String = "a3d599da-a9de-8caa-950a-6bc057b1b261", role As %String = "ed", detailMode As %String = "detailed", outputPath As %String = "/tmp/smart-summary.txt") As %Status
+{
+    Set oldIO = $IO
+    Set opened = 0
+    Try {
+        Open outputPath:"NWS":5
+        If '$TEST {
+            Return $$$ERROR($$$GeneralError, "Unable to open output file: " _ outputPath)
+        }
+        Set opened = 1
+        Use outputPath
+
+        Set tool = ##class(Sample.AI.Tools.FHIRReadOnly).%New()
+        Set summary = tool.GenerateSmartSummary(patientId, 20, 20, role, detailMode)
+
+        If $ISOBJECT(summary) && (summary.%Get("error") '= "") {
+            Write "Narrative demo failed: ", summary.%Get("error"), !
+            Use oldIO
+            Close outputPath
+            Return $$$ERROR($$$GeneralError, summary.%Get("error"))
+        }
+
+        Do ..WriteNarrativeSummary(summary)
+
+        Use oldIO
+        Close outputPath
+        Return $$$OK
+    } Catch ex {
+        If $IO '= oldIO {
+            Use oldIO
+        }
+        If opened {
+            Close outputPath
+        }
+        Return ex.AsStatus()
+    }
+}
+
 }
