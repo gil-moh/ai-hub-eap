@@ -194,13 +194,138 @@ ClassMethod WriteNarrativeSummary(summary As %DynamicObject) [ Internal ]
 
     Write !, "Summary for ", ..RoleTitle(role), !
     Write !, "Current Issues", !
-    Do ..WriteBulletArray(issues, ..GetSectionLimit(role, "issues"))
+    Do ..WriteDeterministicCurrentIssues(observations, conditions, medicationRequests, allergies, encounters, carePlans)
     Write !, "Recent Changes", !
     Do ..WriteBulletArray(changes, ..GetSectionLimit(role, "changes"))
     Write !, "Risks / Follow-up", !
     Do ..WriteBulletArray(risks, ..GetSectionLimit(role, "risks"))
 
     Do ..WriteRoleActionPlan(role, observations, medicationRequests, allergies, encounters, carePlans)
+}
+
+ClassMethod WriteDeterministicCurrentIssues(observations As %DynamicObject, conditions As %DynamicObject, medicationRequests As %DynamicObject, allergies As %DynamicObject, encounters As %DynamicObject, carePlans As %DynamicObject) [ Internal ]
+{
+    Set wrote = 0
+
+    If $ISOBJECT(observations) {
+        Set obsEntries = observations.%Get("entry")
+        If $ISOBJECT(obsEntries) && (obsEntries.%Size()>0) {
+            Set maxObs = 3
+            Set keptObs = 0
+            For i=0:1:(obsEntries.%Size()-1) {
+                Quit:keptObs'<maxObs
+                Set obsItem = obsEntries.%Get(i)
+                If '$ISOBJECT(obsItem) {
+                    Continue
+                }
+                Set obsRes = obsItem.%Get("resource")
+                If '$ISOBJECT(obsRes) {
+                    Continue
+                }
+                Set unusual = ..DescribeUnusualObservation(obsRes)
+                If unusual = "" {
+                    Continue
+                }
+                Write "- Abnormal observation: ", unusual, !
+                Set wrote = 1
+                Set keptObs = keptObs + 1
+            }
+        }
+    }
+
+    If $ISOBJECT(conditions) {
+        Set condEntries = conditions.%Get("entry")
+        If $ISOBJECT(condEntries) && (condEntries.%Size()>0) {
+            Set maxCond = 2
+            Set keptCond = 0
+            For i=0:1:(condEntries.%Size()-1) {
+                Quit:keptCond'<maxCond
+                Set condItem = condEntries.%Get(i)
+                If '$ISOBJECT(condItem) {
+                    Continue
+                }
+                Set condRes = condItem.%Get("resource")
+                If '$ISOBJECT(condRes) {
+                    Continue
+                }
+                Set statusText = ..GetCodeFromConcept(condRes.%Get("clinicalStatus"))
+                If ..IsInactiveCondition(statusText) {
+                    Continue
+                }
+                Set condText = ..DescribeResource(condRes, "Condition")
+                If condText = "" {
+                    Continue
+                }
+                Write "- Active condition: ", condText, !
+                Set wrote = 1
+                Set keptCond = keptCond + 1
+            }
+        }
+    }
+
+    If $ISOBJECT(medicationRequests) {
+        Set medEntries = medicationRequests.%Get("entry")
+        If $ISOBJECT(medEntries) && (medEntries.%Size()>0) {
+            Set medItem = medEntries.%Get(0)
+            If $ISOBJECT(medItem) {
+                Set medRes = medItem.%Get("resource")
+                Set medText = ..DescribeResource(medRes, "MedicationRequest")
+                If medText '= "" {
+                    Write "- Active medication context: ", medText, !
+                    Set wrote = 1
+                }
+            }
+        }
+    }
+
+    If $ISOBJECT(allergies) {
+        Set allergyEntries = allergies.%Get("entry")
+        If $ISOBJECT(allergyEntries) && (allergyEntries.%Size()>0) {
+            Set allergyItem = allergyEntries.%Get(0)
+            If $ISOBJECT(allergyItem) {
+                Set allergyRes = allergyItem.%Get("resource")
+                Set allergyText = ..DescribeResource(allergyRes, "AllergyIntolerance")
+                If allergyText '= "" {
+                    Write "- Allergy safety constraint: ", allergyText, !
+                    Set wrote = 1
+                }
+            }
+        }
+    }
+
+    If $ISOBJECT(encounters) {
+        Set encEntries = encounters.%Get("entry")
+        If $ISOBJECT(encEntries) && (encEntries.%Size()>0) {
+            Set encItem = encEntries.%Get(0)
+            If $ISOBJECT(encItem) {
+                Set encRes = encItem.%Get("resource")
+                Set encText = ..DescribeResource(encRes, "Encounter")
+                If encText '= "" {
+                    Write "- Recent acute utilization: ", encText, !
+                    Set wrote = 1
+                }
+            }
+        }
+    }
+
+    If $ISOBJECT(carePlans) {
+        Set planEntries = carePlans.%Get("entry")
+        If $ISOBJECT(planEntries) && (planEntries.%Size()>0) {
+            Set planItem = planEntries.%Get(0)
+            If $ISOBJECT(planItem) {
+                Set planRes = planItem.%Get("resource")
+                Set planText = ..DescribeResource(planRes, "CarePlan")
+                If planText '= "" {
+                    Write "- Active care plan focus: ", planText, !
+                    Set wrote = 1
+                }
+            }
+        }
+    }
+
+    If 'wrote {
+        Write "- No concrete current issues detected in available structured data.", !
+    }
 }
 
 ClassMethod WriteRoleActionPlan(role As %String, observations As %DynamicObject, medicationRequests As %DynamicObject, allergies As %DynamicObject, encounters As %DynamicObject, carePlans As %DynamicObject) [ Internal ]
