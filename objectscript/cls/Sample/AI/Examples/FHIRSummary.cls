@@ -189,6 +189,7 @@ ClassMethod WriteNarrativeSummary(summary As %DynamicObject) [ Internal ]
     Do ..WriteTopDetails("Allergies", allergies, "AllergyIntolerance", ..GetDetailLimit(role, "allergies"))
     Do ..WriteTopDetails("Recent Encounters", encounters, "Encounter", ..GetDetailLimit(role, "encounters"))
     Do ..WriteTopDetails("Recent Observations", observations, "Observation", ..GetDetailLimit(role, "observations"))
+    Do ..WriteUnusualObservationDetails(observations, ..GetDetailLimit(role, "observations"))
     Do ..WriteTopDetails("Care Plans", carePlans, "CarePlan", ..GetDetailLimit(role, "careplans"))
 
     Write !, "Summary for ", ..RoleTitle(role), !
@@ -590,6 +591,272 @@ ClassMethod GetObservationValue(observation As %DynamicObject) As %String [ Inte
     }
 
     Return ""
+}
+
+ClassMethod WriteUnusualObservationDetails(bundle As %DynamicObject, maxItems As %Integer = 3) [ Internal ]
+{
+    If '$ISOBJECT(bundle) {
+        Quit
+    }
+
+    Set entries = bundle.%Get("entry")
+    If '$ISOBJECT(entries) || (entries.%Size()=0) {
+        Quit
+    }
+
+    Set cap = $SELECT(maxItems<1:1, 1:maxItems)
+    Set out = ""
+    Set kept = 0
+    For i=0:1:(entries.%Size()-1) {
+        Quit:kept'<cap
+        Set item = entries.%Get(i)
+        If '$ISOBJECT(item) {
+            Continue
+        }
+        Set resource = item.%Get("resource")
+        If '$ISOBJECT(resource) {
+            Continue
+        }
+
+        Set unusual = ..DescribeUnusualObservation(resource)
+        If unusual = "" {
+            Continue
+        }
+
+        If out = "" {
+            Set out = unusual
+        } Else {
+            Set out = out _ "; " _ unusual
+        }
+        Set kept = kept + 1
+    }
+
+    If out '= "" {
+        Write "- Unusual Results: ", out, !
+    }
+}
+
+ClassMethod DescribeUnusualObservation(observation As %DynamicObject) As %String [ Internal ]
+{
+    If '$ISOBJECT(observation) {
+        Return ""
+    }
+
+    Set obsName = ..GetCodeableConceptDisplay(observation.%Get("code"))
+    If obsName = "" {
+        Set obsName = "Observation"
+    }
+
+    Set valueText = ..GetObservationValue(observation)
+    If valueText = "" {
+        Return ""
+    }
+
+    Set q = observation.%Get("valueQuantity")
+    Set valueRaw = ""
+    Set unit = ""
+    Set hasNumeric = 0
+    Set valueNum = 0
+    If $ISOBJECT(q) {
+        Set valueRaw = ..GetSafeText(q, "value")
+        Set unit = ..GetSafeText(q, "unit")
+        If ..IsNumericText(valueRaw) {
+            Set hasNumeric = 1
+            Set valueNum = +valueRaw
+        }
+    }
+
+    Set flag = ""
+    Set detail = ""
+
+    Set rr = observation.%Get("referenceRange")
+    If $ISOBJECT(rr) && (rr.%Size()>0) && hasNumeric {
+        Set rr0 = rr.%Get(0)
+        If $ISOBJECT(rr0) {
+            Set lowObj = rr0.%Get("low")
+            Set highObj = rr0.%Get("high")
+            Set lowRaw = ""
+            Set highRaw = ""
+            If $ISOBJECT(lowObj) {
+                Set lowRaw = ..GetSafeText(lowObj, "value")
+            }
+            If $ISOBJECT(highObj) {
+                Set highRaw = ..GetSafeText(highObj, "value")
+            }
+
+            If (lowRaw '= "") && ..IsNumericText(lowRaw) && (valueNum < +lowRaw) {
+                Set flag = "low"
+            }
+            If (highRaw '= "") && ..IsNumericText(highRaw) && (valueNum > +highRaw) {
+                Set flag = "high"
+            }
+
+            If flag '= "" {
+                Set rrText = ""
+                If lowRaw '= "" {
+                    Set rrText = lowRaw
+                }
+                If highRaw '= "" {
+                    If rrText '= "" {
+                        Set rrText = rrText _ "-"
+                    }
+                    Set rrText = rrText _ highRaw
+                }
+                If rrText '= "" {
+                    Set detail = flag
+                } Else {
+                    Set detail = flag _ " vs reference " _ rrText
+                    If unit '= "" {
+                        Set detail = detail _ " " _ unit
+                    }
+                }
+            }
+        }
+    }
+
+    If detail = "" {
+        Set interp = ..GetObservationInterpretationFlag(observation)
+        If interp '= "" {
+            Set detail = interp
+            Set flag = interp
+        }
+    }
+
+    If detail = "" {
+        Set thresh = ..GetObservationThresholdFlag(obsName, hasNumeric, valueNum)
+        If thresh '= "" {
+            Set detail = thresh _ " (rule-based threshold)"
+            Set flag = thresh
+        }
+    }
+
+    If detail = "" {
+        Return ""
+    }
+
+    Return obsName _ "=" _ valueText _ " [" _ detail _ "]"
+}
+
+ClassMethod GetObservationInterpretationFlag(observation As %DynamicObject) As %String [ Internal ]
+{
+    If '$ISOBJECT(observation) {
+        Return ""
+    }
+
+    Set interp = observation.%Get("interpretation")
+    If '$ISOBJECT(interp) || (interp.%Size()=0) {
+        Return ""
+    }
+
+    Set c0 = interp.%Get(0)
+    If '$ISOBJECT(c0) {
+        Return ""
+    }
+
+    Set codings = c0.%Get("coding")
+    If $ISOBJECT(codings) && (codings.%Size()>0) {
+        Set firstCoding = codings.%Get(0)
+        If $ISOBJECT(firstCoding) {
+            Set code = $ZCONVERT(..GetSafeText(firstCoding, "code"), "L")
+            If (code = "h") || (code = "hh") || (code = "hu") || (code = "crit") {
+                Return "high"
+            }
+            If (code = "l") || (code = "ll") || (code = "lu") {
+                Return "low"
+            }
+            If (code = "a") || (code = "abnormal") {
+                Return "abnormal"
+            }
+        }
+    }
+
+    Set txt = $ZCONVERT(..GetCodeableConceptDisplay(c0), "L")
+    If (txt [ "high") || (txt [ "critical") {
+        Return "high"
+    }
+    If txt [ "low" {
+        Return "low"
+    }
+    If txt [ "abnormal" {
+        Return "abnormal"
+    }
+
+    Return ""
+}
+
+ClassMethod GetObservationThresholdFlag(obsName As %String, hasNumeric As %Boolean, valueNum As %Double) As %String [ Internal ]
+{
+    If 'hasNumeric {
+        Return ""
+    }
+
+    Set name = $ZCONVERT(obsName, "L")
+
+    If (name [ "systolic") && (name [ "blood pressure") {
+        If valueNum < 90 Return "low"
+        If valueNum > 180 Return "high"
+        Return ""
+    }
+
+    If (name [ "diastolic") && (name [ "blood pressure") {
+        If valueNum < 60 Return "low"
+        If valueNum > 120 Return "high"
+        Return ""
+    }
+
+    If (name [ "heart rate") || (name [ "pulse rate") {
+        If valueNum < 50 Return "low"
+        If valueNum > 120 Return "high"
+        Return ""
+    }
+
+    If (name [ "oxygen saturation") || (name [ "spo2") {
+        If valueNum < 92 Return "low"
+        Return ""
+    }
+
+    If name [ "temperature" {
+        If valueNum < 35 Return "low"
+        If valueNum > 38.3 Return "high"
+        Return ""
+    }
+
+    If name [ "respiratory rate" {
+        If valueNum < 10 Return "low"
+        If valueNum > 24 Return "high"
+        Return ""
+    }
+
+    If name [ "glucose" {
+        If valueNum < 70 Return "low"
+        If valueNum > 250 Return "high"
+        Return ""
+    }
+
+    Return ""
+}
+
+ClassMethod IsNumericText(raw As %String) As %Boolean [ Internal ]
+{
+    Set t = $ZSTRIP(raw, "<W")
+    If t = "" {
+        Return 0
+    }
+
+    If t?1(1"+",1"-").N {
+        Return 1
+    }
+    If t?1(1"+",1"-").N1"."1.N {
+        Return 1
+    }
+    If t?1.N {
+        Return 1
+    }
+    If t?1.N1"."1.N {
+        Return 1
+    }
+
+    Return 0
 }
 
 ClassMethod GetConditionDate(condition As %DynamicObject) As %String [ Internal ]
