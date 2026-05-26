@@ -1,50 +1,83 @@
-# Medication Safety and Interaction Assistant (Work In Progress)
+# Medication Safety and Interaction Assistant
 
-This branch is dedicated to a new application: Medication Safety and Interaction Assistant.
+AI-enabled FHIR assistant for medication risk detection and explainable clinical guidance.
 
-## Goal
+## Contest Submission Summary
 
-Build an AI-enabled FHIR assistant that helps identify medication safety risks and clinically relevant interactions from patient context, and produces role-specific guidance for:
+- Status: ready for submission
+- Runtime: InterSystems IRIS / IRIS for Health Community Edition
+- License: open source (see `LICENSE`)
+- Repo: this repository branch (`medication-safety-and-interaction-assistant`)
 
-- ED doctor
-- Care manager
-- Patient
-- Family caregiver
+## What This Project Does
 
-## Planned MVP Scope
+Given a patient context from FHIR resources, the assistant produces:
 
-- Show the active medication list
-- Detect duplicate therapy
-- Cross-check medications against allergies
-- Produce a plain-language counseling summary
-- Consider supporting clinical context (MedicationRequest, MedicationStatement, AllergyIntolerance, Condition, Observation)
-- Keep evidence visible and explain why each safety signal was raised
+- Strict warnings first, then conservative warnings with extra context
+- Explainable findings with explicit reasoning text
+- Detection modules for interactions, allergies, black-box/population risk, lab threshold risk, QT risk, and anticholinergic burden
+- Structured recommended actions with urgency SLA (`actionType`, `priority`, `slaHours`, `sourceRisk`)
+- Human-readable narrative for clinical review
 
-## Platform Features
+## Main Implementation
 
-- FHIR API for medication, allergy, condition, and observation retrieval
-- AI Hub for deterministic narrative generation and agent-style workflows
-- Vector Search for context-aware explanations from drug guidance content or patient education documents
+- Core read-only safety engine:
+	- `objectscript/cls/Sample/AI/Tools/MedicationSafetyReadOnly.cls`
+- Narrative renderer:
+	- `objectscript/cls/Sample/AI/Examples/MedicationSafetyAssistant.cls`
+- Synthetic profile generator:
+	- `scripts/create_medication_safety_profiles.py`
+- Input/output consolidator:
+	- `scripts/consolidate_med_safety_cases.py`
+- Consolidated demonstration artifacts:
+	- `med_safety_io/*-case.json`
 
-## Nice Twist
+## Completed Scope
 
-Use Vector Search to surface relevant counseling snippets, drug guidance, or patient education text that can explain why a medication warning matters in plain language.
+- [x] Active-medication risk review from FHIR context
+- [x] Duplicate/interacting/allergy/risk-category checks
+- [x] Explainable warnings with per-finding reasoning
+- [x] Strict-first output organization
+- [x] Lab-threshold risk detection
+- [x] QT-risk detection (including low potassium amplification)
+- [x] Anticholinergic burden scoring
+- [x] Structured action plan with urgency SLAs
+- [x] Synthetic profile suite + reproducible consolidated case outputs
 
-## Initial Deliverables
+## Quick Runbook
 
-- New ObjectScript classes under `objectscript/cls/Sample/AI/`
-- Reproducible runbook commands for local validation
-- Rich synthetic test profiles focused on medication safety scenarios
-- Contest-ready README sections (team, links, install, behavior description)
-- A counseling summary that ties medication findings to patient-friendly guidance
+1. Start IRIS (container or local instance) and ensure FHIR endpoint is reachable.
+2. Generate and post synthetic profiles:
 
-## Development Checklist
+```bash
+python scripts/create_medication_safety_profiles.py
+```
 
-- [ ] Define first risk rules and interaction heuristics
-- [ ] Implement read-only data retrieval tool methods
-- [ ] Implement narrative summary generator for all roles
-- [ ] Add synthetic patient profiles for medication-risk edge cases
-- [ ] Add smoke-test commands and expected output examples
+3. Run assistant per generated patient profile (ObjectScript session script/runbook).
+4. Consolidate each profile into a single case artifact:
+
+```bash
+python scripts/consolidate_med_safety_cases.py
+```
+
+5. Review final outputs in `med_safety_io/`.
+
+## Example Output Artifacts
+
+- `med_safety_io/med-safe-interaction-001-case.json`
+- `med_safety_io/med-safe-lab-001-case.json`
+- `med_safety_io/med-safe-qt-001-case.json`
+- `med_safety_io/med-safe-anticholinergic-001-case.json`
+
+## Team
+
+- Add participant name and profile link
+- Add teammate names and profile links (if team submission)
+
+## Demo
+
+- Add video link (required by contest guidance)
+- Optional: add a short architecture or walk-through image/GIF
 
 ---
 
