@@ -71,8 +71,10 @@ python scripts/consolidate_med_safety_cases.py
 
 ## Team
 
-- Add participant name and profile link
-- Add teammate names and profile links (if team submission)
+- Team lead: Gil Tavassy (InterSystems Developer Community profile: https://community.intersystems.com/user/gil-tavassy)
+- LinkedIn: https://www.linkedin.com/in/gil-tavassy-5703b311b
+
+Submission mode: solo project.
 
 ## Demo
 
